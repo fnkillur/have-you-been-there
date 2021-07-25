@@ -25,3 +25,4 @@ yarn-debug.log*
 yarn-error.log*
 
 /src/firebase.config.ts
+/src/google.api.config.ts

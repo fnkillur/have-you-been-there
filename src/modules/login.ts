@@ -10,7 +10,7 @@ export const setUserInfo = (user: User) => ({
   payload: user,
 });
 
-type userAction = | ReturnType<typeof setUserInfo>
+type userAction = ReturnType<typeof setUserInfo>;
 
 type loginState = {
   email?: string;
@@ -22,9 +22,9 @@ const initLoginState = {
   name: undefined,
 };
 
-function loginReducer(state: loginState, action: userAction) {
+function loginReducer(state: loginState = initLoginState, action: userAction) {
   switch (action.type) {
-    case "SET_USER_INFO":
+    case 'SET_USER_INFO':
       return {
         ...state,
         ...action.payload,
