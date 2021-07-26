@@ -43,7 +43,7 @@ function Map() {
     }
   }, []);
 
-  return <div id="map" style={{ width: window.innerWidth, height: window.innerHeight }} />;
+  return <div id="map" style={{ width: window.innerWidth, height: window.innerHeight - 60 }} />;
 }
 
 export default Map;

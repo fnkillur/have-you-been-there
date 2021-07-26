@@ -1,0 +1,18 @@
+.layout {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+
+    .main {
+        flex-grow: 1;
+    }
+
+    .footer {
+        height: 60px;
+        flex-shrink: 0;
+        text-align: center;
+    }
+}
+
