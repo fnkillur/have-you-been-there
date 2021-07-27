@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { mapApiKey } from '../../google.api.config';
+import useLoginCheck from '../../hooks/login/useLoginCheck';
 
 type Position = {
   lat: number;
@@ -7,6 +8,8 @@ type Position = {
 };
 
 function Map() {
+  useLoginCheck();
+
   const mapObj = useRef<google.maps.Map | undefined>(undefined);
   const [position, setPosition] = useState<Position>({ lat: 37.31252759943007, lng: 127.08845821697777 });
 
@@ -27,7 +30,7 @@ function Map() {
 
   // 구글 지도 API 초기화
   useEffect(() => {
-    if (!window.google) {
+    if (!mapObj.current) {
       const script = document.createElement('script');
       script.type = 'text/javascript';
       script.src = `https://maps.googleapis.com/maps/api/js?key=${mapApiKey}`;
@@ -38,12 +41,20 @@ function Map() {
         mapObj.current = new window.google.maps.Map(document.getElementById('map') as HTMLElement, {
           center,
           zoom: 16,
+          disableDefaultUI: true,
         });
       });
     }
-  }, []);
+  }, [mapObj.current]);
 
-  return <div id="map" style={{ width: window.innerWidth, height: window.innerHeight - 60 }} />;
+  return (
+    <section className="map-layout">
+      <div className="map-header">
+        <input type="text" className="input-search" />
+      </div>
+      <div id="map" style={{ width: window.innerWidth, height: window.innerHeight - 60 }} />
+    </section>
+  );
 }
 
 export default Map;

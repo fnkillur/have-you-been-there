@@ -12,12 +12,12 @@ import './App.scss';
 function App() {
   return (
     <BrowserRouter>
-      <div className="layout">
-        <main className="main">
-          <Switch>
-            <Route path="/" exact>
-              <Login />
-            </Route>
+      <Switch>
+        <Route path="/" exact>
+          <Login />
+        </Route>
+        <div className="layout">
+          <main className="main">
             <Route path="/list">
               <List />
             </Route>
@@ -33,12 +33,12 @@ function App() {
             <Route path="/settings">
               <Settings />
             </Route>
-          </Switch>
-        </main>
-        <footer className="footer">
-          <BottomTabs />
-        </footer>
-      </div>
+          </main>
+          <footer className="footer">
+            <BottomTabs />
+          </footer>
+        </div>
+      </Switch>
     </BrowserRouter>
   );
 }

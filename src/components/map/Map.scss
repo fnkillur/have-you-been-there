@@ -1,0 +1,14 @@
+.map-layout {
+  position: relative;
+
+  .map-header {
+    position: absolute;
+    top: 40px;
+    left: 40px;
+
+    .input-search {
+      height: 30px;
+      width: 200px;
+    }
+  }
+}

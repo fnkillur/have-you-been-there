@@ -1,26 +1,12 @@
-type Props = {
-  email: string;
-  name: string | null;
-};
+import { useHistory } from 'react-router-dom';
+import { auth } from '../../firebase.config';
 
-function useLoginCheck(): Props | undefined {
-  const emailFromStorage = localStorage.getItem('userEmail');
-  if (emailFromStorage) {
-    return {
-      email: emailFromStorage,
-      name: localStorage.getItem('userName'),
-    };
+function useLoginCheck() {
+  const history = useHistory();
+
+  if (!auth.currentUser) {
+    history.replace('/');
   }
-
-  const emailFromSession = sessionStorage.getItem('userEmail');
-  if (emailFromSession) {
-    return {
-      email: emailFromSession,
-      name: sessionStorage.getItem('userName'),
-    };
-  }
-
-  return undefined;
 }
 
 export default useLoginCheck;

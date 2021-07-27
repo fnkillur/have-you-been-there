@@ -1,27 +1,26 @@
-.login_desc {
-  margin-top: 30px;
-  text-align: left;
-  font-size: 24px;
-  font-weight: bold;
-  line-height: 32px;
-}
+.login_layout {
+  padding: 40px;
 
-.login_buttons {
-  margin-top: 180px;
-
-  .btn_google_login {
-    width: 180px;
-    height: 40px;
-    background-image: url("../../assets/icon/google_login_light.png");
-    background-position: center;
-    background-size: auto;
-    background-repeat: no-repeat;
+  .login_desc {
+    margin-top: 30px;
+    text-align: left;
+    font-size: 24px;
+    font-weight: bold;
+    line-height: 32px;
   }
 
-  .input_auto_login {
-    margin-top: 20px;
+  .login_buttons {
+    margin-top: 180px;
     display: flex;
     justify-content: center;
-    align-items: center;
+
+    .btn_google_login {
+      width: 180px;
+      height: 40px;
+      background-image: url("../../assets/icon/google_login_light.png");
+      background-position: center;
+      background-size: auto;
+      background-repeat: no-repeat;
+    }
   }
 }
