@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
+import { Box, IconButton, InputBase, Paper } from '@material-ui/core';
+import { Search } from '@material-ui/icons';
 import { mapApiKey } from '../../google.api.config';
 import useLoginCheck from '../../hooks/login/useLoginCheck';
+import './Map.scss';
 
 type Position = {
   lat: number;
@@ -48,12 +51,22 @@ function Map() {
   }, [mapObj.current]);
 
   return (
-    <section className="map-layout">
-      <div className="map-header">
-        <input type="text" className="input-search" />
-      </div>
-      <div id="map" style={{ width: window.innerWidth, height: window.innerHeight - 60 }} />
-    </section>
+    <Box component="article" maxWidth="lg">
+      <Paper component="form" className="root">
+        {/*<IconButton className={classes.iconButton} aria-label="menu">*/}
+        {/*  <MenuIcon />*/}
+        {/*</IconButton>*/}
+        <InputBase className="input" placeholder="장소 검색" inputProps={{ 'aria-label': '장소 검색' }} />
+        <IconButton type="submit" className="iconButton" aria-label="search">
+          <Search />
+        </IconButton>
+        {/*<Divider className={classes.divider} orientation="vertical" />*/}
+        {/*<IconButton color="primary" className={classes.iconButton} aria-label="directions">*/}
+        {/*  <DirectionsIcon />*/}
+        {/*</IconButton>*/}
+      </Paper>
+      <div id="map" style={{ width: window.innerWidth, height: window.innerHeight - 56 - 50 }} />
+    </Box>
   );
 }
 

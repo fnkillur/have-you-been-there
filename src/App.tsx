@@ -7,6 +7,7 @@ import Form from './components/form';
 import Stats from './components/stats';
 import Settings from './components/settings';
 import BottomTabs from './components/_common/BottomTabs';
+import WriteButton from './components/_common/WriteButton';
 import './App.scss';
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
           <footer className="footer">
             <BottomTabs />
           </footer>
+          <WriteButton />
         </div>
       </Switch>
     </BrowserRouter>

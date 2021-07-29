@@ -1,18 +1,24 @@
 .layout {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+
+  .main {
+    flex-grow: 1;
+  }
+
+  .footer {
+    height: 60px;
+    flex-shrink: 0;
     text-align: center;
+  }
 
-    .main {
-        flex-grow: 1;
-    }
-
-    .footer {
-        height: 60px;
-        flex-shrink: 0;
-        text-align: center;
-    }
+  .speed-dial {
+    position: absolute;
+    bottom: 90px;
+    right: 20px;
+  }
 }
 

@@ -1,14 +1,19 @@
-.map-layout {
-  position: relative;
-
-  .map-header {
-    position: absolute;
-    top: 40px;
-    left: 40px;
-
-    .input-search {
-      height: 30px;
-      width: 200px;
-    }
-  }
+.root {
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
 }
+.input {
+  margin-left: 10px;
+  flex: 1;
+}
+.iconButton {
+  padding: 10px;
+  margin-right: 10px;
+}
+.divider {
+  height: 28px;
+  margin: 4px;
+};
