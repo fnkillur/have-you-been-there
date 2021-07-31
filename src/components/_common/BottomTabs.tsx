@@ -8,7 +8,7 @@ function BottomTabs() {
   const history = useHistory();
 
   return (
-    <BottomNavigation value={location.pathname}>
+    <BottomNavigation value={location.pathname} style={{ position: 'fixed', bottom: 0 }}>
       <BottomNavigationAction
         showLabel
         label="목록"
