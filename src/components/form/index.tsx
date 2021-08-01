@@ -190,7 +190,12 @@ function Form() {
               textarea.style.borderColor = '#D8D8D8';
             }}
           />
-          <Button variant="contained" color="primary" type="submit" style={{ marginTop: '20px', width: '100%' }}>
+          <Button
+            variant="contained"
+            color="primary"
+            type="submit"
+            style={{ marginTop: '20px', width: '100%', height: '50px' }}
+          >
             저장하기
           </Button>
         </form>
