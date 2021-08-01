@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useFormik } from 'formik';
 import {
+  Backdrop,
   Button,
+  CircularProgress,
   Container,
   FormControl,
   InputAdornment,
@@ -53,6 +55,7 @@ function Form() {
   useLoginCheck();
 
   const [message, setMessage] = useState<Message>(initMessage);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const formik = useFormik<Record>({
     initialValues: {
       price: undefined,
@@ -68,6 +71,8 @@ function Form() {
         return;
       }
 
+      setIsLoading(true);
+
       try {
         await firebaseDB.ref(`/records/${auth.currentUser.uid}`).push(values);
         setMessage({ open: true, contents: '저장이 완료됐습니다.', type: 'success' });
@@ -76,6 +81,8 @@ function Form() {
       } catch (e) {
         setMessage({ open: true, contents: e.message, type: 'error' });
       }
+
+      setIsLoading(false);
     },
   });
 
@@ -187,11 +194,14 @@ function Form() {
             저장하기
           </Button>
         </form>
-        <Snackbar open={message.open} autoHideDuration={5000} onClose={() => setMessage(initMessage)}>
+        <Snackbar open={message.open} autoHideDuration={3000} onClose={() => setMessage(initMessage)}>
           <Alert onClose={() => setMessage(initMessage)} severity={message.type}>
             {message.contents}
           </Alert>
         </Snackbar>
+        <Backdrop open={isLoading} onClick={() => setIsLoading(false)} style={{ zIndex: 10, color: '#FFF' }}>
+          <CircularProgress color="inherit" />
+        </Backdrop>
       </Container>
     </MuiPickersUtilsProvider>
   );
