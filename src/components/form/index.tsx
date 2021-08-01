@@ -1,19 +1,25 @@
+import { useState } from 'react';
 import { useFormik } from 'formik';
 import {
+  Button,
   Container,
   FormControl,
   InputAdornment,
   InputLabel,
   OutlinedInput,
+  Snackbar,
   TextareaAutosize,
   Typography,
 } from '@material-ui/core';
 import { withStyles } from '@material-ui/core/styles';
 import { KeyboardDatePicker, KeyboardTimePicker, MuiPickersUtilsProvider } from '@material-ui/pickers';
-import { Rating } from '@material-ui/lab';
+import { Alert, Rating } from '@material-ui/lab';
+import { Color } from '@material-ui/lab/Alert/Alert';
 import FavoriteIcon from '@material-ui/icons/Favorite';
 import { MaterialUiPickersDate } from '@material-ui/pickers/typings/date';
 import DateFnsUtils from '@date-io/date-fns';
+import { auth, firebaseDB } from '../../firebase.config';
+import useLoginCheck from '../../hooks/login/useLoginCheck';
 import './Form.scss';
 
 const StyledRating = withStyles({
@@ -25,29 +31,51 @@ const StyledRating = withStyles({
   },
 })(Rating);
 
+type Message = {
+  open: boolean;
+  contents?: string;
+  type: Color;
+};
+
+const initMessage: Message = { open: false, contents: undefined, type: 'success' };
+
 type Record = {
-  price: number;
+  price?: number;
   placeName: string;
   placeId: string;
-  menus: string[];
+  menus: string;
   visitedDate: Date;
   score: number | null;
   comment: string;
 };
 
 function Form() {
+  useLoginCheck();
+
+  const [message, setMessage] = useState<Message>(initMessage);
   const formik = useFormik<Record>({
     initialValues: {
-      price: 0,
+      price: undefined,
       placeName: '',
       placeId: '',
-      menus: [],
+      menus: '',
       visitedDate: new Date(),
-      score: null,
+      score: 0,
       comment: '',
     },
-    onSubmit(values) {
-      console.log(values);
+    async onSubmit(values) {
+      if (!auth.currentUser?.uid) {
+        return;
+      }
+
+      try {
+        await firebaseDB.ref(`/records/${auth.currentUser.uid}`).push(values);
+        setMessage({ open: true, contents: '저장이 완료됐습니다.', type: 'success' });
+        formik.resetForm();
+        window.scrollTo(0, 0);
+      } catch (e) {
+        setMessage({ open: true, contents: e.message, type: 'error' });
+      }
     },
   });
 
@@ -57,7 +85,7 @@ function Form() {
         <Typography variant="h6" component="div" style={{ textAlign: 'left', margin: '10px 0', fontWeight: 'bold' }}>
           기록하기🧑‍💻
         </Typography>
-        <form noValidate autoComplete="off" onSubmit={formik.handleSubmit}>
+        <form autoComplete="off" onSubmit={formik.handleSubmit}>
           <FormControl fullWidth variant="outlined" className="form-control">
             <InputLabel htmlFor="price">금액</InputLabel>
             <OutlinedInput
@@ -77,14 +105,20 @@ function Form() {
               id="placeName"
               name="placeName"
               label="장소"
-              required
               value={formik.values.placeName}
               onChange={formik.handleChange}
+              required
             />
           </FormControl>
           <FormControl fullWidth variant="outlined" className="form-control">
             <InputLabel htmlFor="menus">내역</InputLabel>
-            <OutlinedInput id="menus" label="내역" />
+            <OutlinedInput
+              id="menus"
+              name="menus"
+              label="내역"
+              value={formik.values.menus}
+              onChange={formik.handleChange}
+            />
           </FormControl>
           <div style={{ display: 'flex' }}>
             <KeyboardDatePicker
@@ -149,7 +183,15 @@ function Form() {
               textarea.style.borderColor = '#D8D8D8';
             }}
           />
+          <Button variant="contained" color="primary" type="submit" style={{ marginTop: '20px', width: '100%' }}>
+            저장하기
+          </Button>
         </form>
+        <Snackbar open={message.open} autoHideDuration={5000} onClose={() => setMessage(initMessage)}>
+          <Alert onClose={() => setMessage(initMessage)} severity={message.type}>
+            {message.contents}
+          </Alert>
+        </Snackbar>
       </Container>
     </MuiPickersUtilsProvider>
   );
