@@ -97,6 +97,7 @@ function Form() {
             <InputLabel htmlFor="price">금액</InputLabel>
             <OutlinedInput
               type="number"
+              inputMode="numeric"
               id="price"
               name="price"
               label="금액"

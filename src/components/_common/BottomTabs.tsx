@@ -8,7 +8,10 @@ function BottomTabs() {
   const history = useHistory();
 
   return (
-    <BottomNavigation value={location.pathname} style={{ position: 'fixed', bottom: 0, width: '100%' }}>
+    <BottomNavigation
+      value={location.pathname}
+      style={{ position: 'fixed', bottom: 0, width: '100%', borderTopColor: '#E6E6E6', borderTopWidth: '1px' }}
+    >
       <BottomNavigationAction
         showLabel
         label="목록"
