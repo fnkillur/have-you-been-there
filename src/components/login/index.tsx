@@ -12,6 +12,8 @@ function Login() {
         return;
       }
 
+      sessionStorage.setItem('HYBT_email', user.email);
+      sessionStorage.setItem('HYBT_name', user.displayName || '');
       history.replace('/map');
     });
 

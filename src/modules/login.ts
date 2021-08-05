@@ -1,8 +1,8 @@
 const SET_USER_INFO = 'SET_USER_INFO' as const;
 
 type User = {
-  email: string;
-  name: string;
+  email: string | null;
+  name: string | null;
 };
 
 export const setUserInfo = (user: User) => ({
@@ -13,13 +13,13 @@ export const setUserInfo = (user: User) => ({
 type userAction = ReturnType<typeof setUserInfo>;
 
 type loginState = {
-  email?: string;
-  name?: string;
+  email: string | null;
+  name: string | null;
 };
 
 const initLoginState = {
-  email: undefined,
-  name: undefined,
+  email: null,
+  name: null,
 };
 
 function loginReducer(state: loginState = initLoginState, action: userAction) {

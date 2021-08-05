@@ -1,10 +1,9 @@
 import { useHistory } from 'react-router-dom';
-import { auth } from '../../firebase.config';
 
 function useLoginCheck() {
   const history = useHistory();
 
-  if (!auth.currentUser) {
+  if (!sessionStorage.getItem('HYBT_email')) {
     history.replace('/');
   }
 }
