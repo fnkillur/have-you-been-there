@@ -1,4 +1,4 @@
-import { KeyboardEventHandler, useState } from 'react';
+import { KeyboardEventHandler, useRef, useState } from 'react';
 import { useFormik } from 'formik';
 import {
   Backdrop,
@@ -27,6 +27,7 @@ import DateFnsUtils from '@date-io/date-fns';
 import { auth, firebaseDB } from '../../firebase.config';
 import useLoginCheck from '../../hooks/login/useLoginCheck';
 import { allCategories } from '../../const/categories';
+// eslint-disable-next-line import/no-cycle
 import Map from '../map';
 import './Form.scss';
 
@@ -59,6 +60,21 @@ export type FormRecord = {
   comment: string;
 };
 
+export type SearchPlace = {
+  address_name: string;
+  category_group_code: string;
+  category_group_name: string;
+  category_name: string;
+  distance: string;
+  id: string;
+  phone: string;
+  place_name: string;
+  place_url: string;
+  road_address_name: string;
+  x: string;
+  y: string;
+};
+
 function Form() {
   useLoginCheck();
 
@@ -66,6 +82,10 @@ function Form() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isOpenMap, setIsOpenMap] = useState<boolean>(false);
 
+  const kakaoPlaces = useRef(new window.kakao.maps.services.Places());
+  const [searchList, setSearchList] = useState<SearchPlace[]>([]);
+  const [selectedPlace, setSelectedPlace] = useState<SearchPlace | undefined>();
+  console.log(selectedPlace);
   const formik = useFormik<FormRecord>({
     initialValues: {
       placeId: '',
@@ -105,11 +125,26 @@ function Form() {
     }
   };
 
-  const handleMapSearch: KeyboardEventHandler<HTMLDivElement> = (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      console.log('엔터');
+  const handleMapSearch: KeyboardEventHandler<HTMLDivElement> = async (e) => {
+    if (e.key !== 'Enter') {
+      return;
     }
+
+    e.preventDefault();
+    if (!isOpenMap) {
+      return;
+    }
+
+    await kakaoPlaces.current.keywordSearch(
+      formik.values.placeName,
+      (data: SearchPlace[], status: string, pagination: any) => {
+        if (status !== window.kakao.maps.services.Status.OK) {
+          return;
+        }
+
+        setSearchList(data);
+      },
+    );
   };
 
   return (
@@ -154,7 +189,15 @@ function Form() {
               <MapRounded />
             </IconButton>
           </FormControl>
-          {isOpenMap && <Map width={window.innerWidth - 40} height={window.innerHeight - 300} useSearchBar={false} />}
+          {isOpenMap && (
+            <Map
+              width={window.innerWidth - 40}
+              height={window.innerHeight - 300}
+              useSearchBar={false}
+              searchList={searchList}
+              handleMarkerClick={(place: SearchPlace) => setSelectedPlace(place)}
+            />
+          )}
           <FormControl fullWidth variant="outlined" className="form-control">
             <InputLabel htmlFor="menus">내역</InputLabel>
             <OutlinedInput

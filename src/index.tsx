@@ -7,6 +7,13 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import rootReducer from './modules';
 
+declare global {
+  interface Window {
+    kakao: any;
+    google: any;
+  }
+}
+
 const store = createStore(rootReducer);
 
 ReactDOM.render(
