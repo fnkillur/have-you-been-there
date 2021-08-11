@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { KeyboardEventHandler, useState } from 'react';
 import { useFormik } from 'formik';
 import {
   Backdrop,
@@ -6,9 +6,12 @@ import {
   CircularProgress,
   Container,
   FormControl,
+  IconButton,
   InputAdornment,
   InputLabel,
+  MenuItem,
   OutlinedInput,
+  Select,
   Snackbar,
   TextareaAutosize,
   Typography,
@@ -19,9 +22,12 @@ import { Alert, Rating } from '@material-ui/lab';
 import { Color } from '@material-ui/lab/Alert/Alert';
 import FavoriteIcon from '@material-ui/icons/Favorite';
 import { MaterialUiPickersDate } from '@material-ui/pickers/typings/date';
+import { MapRounded } from '@material-ui/icons';
 import DateFnsUtils from '@date-io/date-fns';
 import { auth, firebaseDB } from '../../firebase.config';
 import useLoginCheck from '../../hooks/login/useLoginCheck';
+import { allCategories } from '../../const/categories';
+import Map from '../map';
 import './Form.scss';
 
 const StyledRating = withStyles({
@@ -41,11 +47,13 @@ type Message = {
 
 const initMessage: Message = { open: false, contents: undefined, type: 'success' };
 
-type Record = {
-  price?: number;
-  placeName: string;
+export type FormRecord = {
+  id?: any;
   placeId: string;
+  placeName: string;
+  price?: number;
   menus: string;
+  category: string;
   visitedDate: Date;
   score: number | null;
   comment: string;
@@ -56,12 +64,15 @@ function Form() {
 
   const [message, setMessage] = useState<Message>(initMessage);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const formik = useFormik<Record>({
+  const [isOpenMap, setIsOpenMap] = useState<boolean>(false);
+
+  const formik = useFormik<FormRecord>({
     initialValues: {
-      price: undefined,
-      placeName: '',
       placeId: '',
+      placeName: '',
+      price: undefined,
       menus: '',
+      category: '음식점',
       visitedDate: new Date(),
       score: 0,
       comment: '',
@@ -74,7 +85,9 @@ function Form() {
       setIsLoading(true);
 
       try {
-        await firebaseDB.ref(`/records/${auth.currentUser.uid}`).push(values);
+        await firebaseDB
+          .ref(`/records/${auth.currentUser.uid}`)
+          .push({ ...values, visitedDate: values.visitedDate.toISOString() });
         setMessage({ open: true, contents: '저장이 완료됐습니다.', type: 'success' });
         formik.resetForm();
         window.scrollTo(0, 0);
@@ -85,6 +98,19 @@ function Form() {
       setIsLoading(false);
     },
   });
+
+  const handleDisableEnter: KeyboardEventHandler = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+    }
+  };
+
+  const handleMapSearch: KeyboardEventHandler<HTMLDivElement> = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      console.log('엔터');
+    }
+  };
 
   return (
     <MuiPickersUtilsProvider utils={DateFnsUtils}>
@@ -104,6 +130,7 @@ function Form() {
               startAdornment={<InputAdornment position="start">₩</InputAdornment>}
               value={formik.values.price}
               onChange={formik.handleChange}
+              onKeyPress={handleDisableEnter}
               required
             />
           </FormControl>
@@ -115,9 +142,19 @@ function Form() {
               label="장소"
               value={formik.values.placeName}
               onChange={formik.handleChange}
+              onKeyPress={handleMapSearch}
               required
             />
+            <IconButton
+              color={isOpenMap ? 'primary' : 'default'}
+              style={{ position: 'absolute', right: '1px', top: '7px', padding: '10px' }}
+              aria-label="directions"
+              onClick={() => setIsOpenMap(!isOpenMap)}
+            >
+              <MapRounded />
+            </IconButton>
           </FormControl>
+          {isOpenMap && <Map width={window.innerWidth - 40} height={window.innerHeight - 300} useSearchBar={false} />}
           <FormControl fullWidth variant="outlined" className="form-control">
             <InputLabel htmlFor="menus">내역</InputLabel>
             <OutlinedInput
@@ -126,7 +163,26 @@ function Form() {
               label="내역"
               value={formik.values.menus}
               onChange={formik.handleChange}
+              onKeyPress={handleDisableEnter}
             />
+          </FormControl>
+          <FormControl variant="outlined" className="form-control">
+            <InputLabel id="category">카테고리</InputLabel>
+            <Select
+              labelId="category"
+              id="category"
+              name="category"
+              value={formik.values.category}
+              onChange={formik.handleChange}
+              label="카테고리"
+            >
+              {allCategories.map(({ label, icon }) => (
+                <MenuItem key={label} value={label}>
+                  {label}
+                  <span style={{ marginLeft: '5px' }}>{icon}</span>
+                </MenuItem>
+              ))}
+            </Select>
           </FormControl>
           <div style={{ display: 'flex' }}>
             <KeyboardDatePicker
@@ -135,7 +191,12 @@ function Form() {
               label="방문날짜"
               format="MM/dd/yyyy"
               value={formik.values.visitedDate}
-              onChange={formik.handleChange}
+              onChange={(isoDate) => {
+                if (isoDate) {
+                  formik.setValues({ ...formik.values, visitedDate: new Date(Date.parse(isoDate.toString())) });
+                }
+              }}
+              onKeyPress={handleDisableEnter}
             />
             <KeyboardTimePicker
               margin="normal"
@@ -152,6 +213,7 @@ function Form() {
                 next.setMinutes(date.getMinutes());
                 formik.setValues({ ...formik.values, visitedDate: next });
               }}
+              onKeyPress={handleDisableEnter}
             />
           </div>
           <Typography gutterBottom style={{ textAlign: 'left', margin: '10px 0' }}>
@@ -195,7 +257,8 @@ function Form() {
             variant="contained"
             color="primary"
             type="submit"
-            style={{ marginTop: '20px', width: '100%', height: '50px' }}
+            style={{ marginTop: '20px', width: '100%', height: '50px', fontSize: '16px', fontWeight: 'bold' }}
+            disabled={!formik.isValid}
           >
             저장하기
           </Button>

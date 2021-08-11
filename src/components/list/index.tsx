@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Timeline,
   TimelineConnector,
@@ -9,93 +10,78 @@ import {
   TimelineSeparator,
 } from '@material-ui/lab';
 import { Box, Paper, Typography } from '@material-ui/core';
-import FastfoodIcon from '@material-ui/icons/Fastfood';
-import LaptopMacIcon from '@material-ui/icons/LaptopMac';
-import HotelIcon from '@material-ui/icons/Hotel';
-import RepeatIcon from '@material-ui/icons/Repeat';
+import { format } from 'date-fns';
+import { auth, firebaseDB } from '../../firebase.config';
 import useLoginCheck from '../../hooks/login/useLoginCheck';
 import SearchBar from '../_common/SearchBar';
+import { isoStringToDate } from '../../utils/DateUtils';
+import { getCategoryIcon } from '../../const/categories';
+
+export type ListRecord = {
+  id: string;
+  placeId: string;
+  placeName: string;
+  menus: string;
+  category: string;
+  price?: string;
+  visitedDate: string;
+  score: string | null;
+  comment: string;
+};
 
 function List() {
   useLoginCheck();
+  const [records, setRecords] = useState<[string, ListRecord][]>([]);
+
+  useEffect(() => {
+    if (!auth.currentUser?.uid) {
+      return;
+    }
+
+    firebaseDB.ref(`/records/${auth.currentUser.uid}`).on('value', (snapshot) => {
+      const data = snapshot.val();
+
+      if (data) {
+        setRecords(Object.entries(data));
+      }
+    });
+  }, []);
 
   return (
     <Box component="article" maxWidth="lg">
       <SearchBar />
       <Timeline align="alternate">
-        <TimelineItem>
-          <TimelineOppositeContent>
-            <Typography variant="body2" color="textSecondary">
-              9:30 am
-            </Typography>
-          </TimelineOppositeContent>
-          <TimelineSeparator>
-            <TimelineDot>
-              <FastfoodIcon />
-            </TimelineDot>
-            <TimelineConnector />
-          </TimelineSeparator>
-          <TimelineContent>
-            <Paper elevation={3} style={{ padding: '6px 16px' }}>
-              <Typography variant="h6" component="h1">
-                Eat
-              </Typography>
-              <Typography>Because you need strength</Typography>
-            </Paper>
-          </TimelineContent>
-        </TimelineItem>
-        <TimelineItem>
-          <TimelineOppositeContent>
-            <Typography variant="body2" color="textSecondary">
-              10:00 am
-            </Typography>
-          </TimelineOppositeContent>
-          <TimelineSeparator>
-            <TimelineDot color="primary">
-              <LaptopMacIcon />
-            </TimelineDot>
-            <TimelineConnector />
-          </TimelineSeparator>
-          <TimelineContent>
-            <Paper elevation={3} style={{ padding: '6px 16px' }}>
-              <Typography variant="h6" component="h1">
-                Code
-              </Typography>
-              <Typography>Because it&apos;s awesome!</Typography>
-            </Paper>
-          </TimelineContent>
-        </TimelineItem>
-        <TimelineItem>
-          <TimelineSeparator>
-            <TimelineDot color="primary" variant="outlined">
-              <HotelIcon />
-            </TimelineDot>
-            <TimelineConnector />
-          </TimelineSeparator>
-          <TimelineContent>
-            <Paper elevation={3} style={{ padding: '6px 16px' }}>
-              <Typography variant="h6" component="h1">
-                Sleep
-              </Typography>
-              <Typography>Because you need rest</Typography>
-            </Paper>
-          </TimelineContent>
-        </TimelineItem>
-        <TimelineItem>
-          <TimelineSeparator>
-            <TimelineDot color="secondary">
-              <RepeatIcon />
-            </TimelineDot>
-          </TimelineSeparator>
-          <TimelineContent>
-            <Paper elevation={3} style={{ padding: '6px 16px' }}>
-              <Typography variant="h6" component="h1">
-                Repeat
-              </Typography>
-              <Typography>Because this is the life you love!</Typography>
-            </Paper>
-          </TimelineContent>
-        </TimelineItem>
+        {records.length > 0 ? (
+          records.map(([id, record]) => {
+            return (
+              <TimelineItem key={id}>
+                <TimelineOppositeContent>
+                  <Typography variant="body2" color="textSecondary">
+                    {format(isoStringToDate(record.visitedDate), 'M월 d일 hh시 mm분')}
+                  </Typography>
+                </TimelineOppositeContent>
+                <TimelineSeparator>
+                  <TimelineDot>{getCategoryIcon(record.category)}</TimelineDot>
+                  <TimelineConnector />
+                </TimelineSeparator>
+                <TimelineContent>
+                  <Paper elevation={3} style={{ padding: '6px 16px' }}>
+                    <Link to={`/form?id=${id}`}>
+                      <Typography variant="h6" component="h1">
+                        {record.placeName}
+                      </Typography>
+                    </Link>
+                    <Typography>{record.category}</Typography>
+                    {record.price && <Typography>{parseInt(record.price, 10).toLocaleString()}원</Typography>}
+                    {record.menus && <Typography>{record.menus}</Typography>}
+                  </Paper>
+                </TimelineContent>
+              </TimelineItem>
+            );
+          })
+        ) : (
+          <Typography>기록이 없습니다.🤪</Typography>
+        )}
       </Timeline>
     </Box>
   );

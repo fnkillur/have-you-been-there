@@ -10,7 +10,14 @@ function BottomTabs() {
   return (
     <BottomNavigation
       value={location.pathname}
-      style={{ position: 'fixed', bottom: 0, width: '100%', borderTopColor: '#E6E6E6', borderTopWidth: '1px' }}
+      style={{
+        position: 'fixed',
+        bottom: 0,
+        width: '100%',
+        borderTopColor: '#E6E6E6',
+        borderTopWidth: '1px',
+        zIndex: 10000,
+      }}
     >
       <BottomNavigationAction
         showLabel

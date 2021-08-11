@@ -10,7 +10,13 @@ type Position = {
   lng: number;
 };
 
-function Map() {
+type Props = {
+  width?: number;
+  height?: number;
+  useSearchBar?: boolean;
+};
+
+function Map({ width = window.innerWidth, height = window.innerHeight - 56 - 50, useSearchBar = true }: Props) {
   useLoginCheck();
 
   const mapObj = useRef<google.maps.Map | undefined>(undefined);
@@ -52,8 +58,8 @@ function Map() {
 
   return (
     <Box component="article" maxWidth="lg">
-      <SearchBar />
-      <div id="map" style={{ width: window.innerWidth, height: window.innerHeight - 56 - 50 }} />
+      {useSearchBar && <SearchBar />}
+      <div id="map" style={{ width, height }} />
     </Box>
   );
 }
