@@ -56,6 +56,9 @@
     "@typescript-eslint/no-duplicate-imports": "off",                                   // (같은 이유)
     "import/no-duplicates": "off",                                                      // (같은 이유)
     "import/no-unresolved": "off",
-    "camelcase": "off"
+    "camelcase": "off",
+    "jsx-a11y/click-events-have-key-events": "off",
+    "jsx-a11y/no-static-element-interactions": "off",
+    "import/no-cycle": "off"
   }
 }

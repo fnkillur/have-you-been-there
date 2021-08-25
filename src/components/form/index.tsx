@@ -1,4 +1,5 @@
 import { KeyboardEventHandler, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { useFormik } from 'formik';
 import {
   Backdrop,
@@ -27,7 +28,6 @@ import DateFnsUtils from '@date-io/date-fns';
 import { auth, firebaseDB } from '../../firebase.config';
 import useLoginCheck from '../../hooks/login/useLoginCheck';
 import { allCategories } from '../../const/categories';
-// eslint-disable-next-line import/no-cycle
 import Map from '../map';
 import './Form.scss';
 
@@ -85,7 +85,7 @@ function Form() {
   const kakaoPlaces = useRef(new window.kakao.maps.services.Places());
   const [searchList, setSearchList] = useState<SearchPlace[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<SearchPlace | undefined>();
-  console.log(selectedPlace);
+
   const formik = useFormik<FormRecord>({
     initialValues: {
       placeId: '',
@@ -107,7 +107,7 @@ function Form() {
       try {
         await firebaseDB
           .ref(`/records/${auth.currentUser.uid}`)
-          .push({ ...values, visitedDate: values.visitedDate.toISOString() });
+          .push({ ...values, visitedDate: values.visitedDate.toISOString(), mapInfo: selectedPlace });
         setMessage({ open: true, contents: '저장이 완료됐습니다.', type: 'success' });
         formik.resetForm();
         window.scrollTo(0, 0);
@@ -126,25 +126,35 @@ function Form() {
   };
 
   const handleMapSearch: KeyboardEventHandler<HTMLDivElement> = async (e) => {
-    if (e.key !== 'Enter') {
-      return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+
+      if (!isOpenMap) {
+        return;
+      }
+
+      await kakaoPlaces.current.keywordSearch(
+        formik.values.placeName,
+        (data: SearchPlace[], status: string, pagination: any) => {
+          if (status !== window.kakao.maps.services.Status.OK) {
+            return;
+          }
+
+          setSearchList(data);
+        },
+      );
     }
+  };
 
-    e.preventDefault();
-    if (!isOpenMap) {
-      return;
+  const handleMapDelete = (e: any) => {
+    if (e.keyCode === 8 && selectedPlace) {
+      // eslint-disable-next-line no-restricted-globals
+      if (confirm('선택한 장소를 제거하시겠습니까?')) {
+        setSelectedPlace(undefined);
+      } else {
+        e.preventDefault();
+      }
     }
-
-    await kakaoPlaces.current.keywordSearch(
-      formik.values.placeName,
-      (data: SearchPlace[], status: string, pagination: any) => {
-        if (status !== window.kakao.maps.services.Status.OK) {
-          return;
-        }
-
-        setSearchList(data);
-      },
-    );
   };
 
   return (
@@ -178,6 +188,7 @@ function Form() {
               value={formik.values.placeName}
               onChange={formik.handleChange}
               onKeyPress={handleMapSearch}
+              onKeyDown={handleMapDelete}
               required
             />
             <IconButton
@@ -195,6 +206,7 @@ function Form() {
               height={window.innerHeight - 300}
               useSearchBar={false}
               searchList={searchList}
+              selectedPlace={selectedPlace}
               handleMarkerClick={(place: SearchPlace) => setSelectedPlace(place)}
             />
           )}

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
+import { render } from 'react-dom';
 import { Box } from '@material-ui/core';
 import { mapApiKey } from '../../google.api.config';
 import useLoginCheck from '../../hooks/login/useLoginCheck';
 import SearchBar from '../_common/SearchBar';
-// eslint-disable-next-line import/no-cycle
 import { SearchPlace } from '../form';
+import InfoWindow from './InfoWindow';
 import './Map.scss';
 
 type Position = {
@@ -17,7 +18,8 @@ type Props = {
   height?: number;
   useSearchBar?: boolean;
   searchList?: SearchPlace[];
-  handleMarkerClick?: (props: any) => void;
+  selectedPlace?: SearchPlace;
+  handleMarkerClick?: (place: SearchPlace) => void;
 };
 
 function Map({
@@ -25,6 +27,7 @@ function Map({
   height = window.innerHeight - 56 - 50,
   useSearchBar = true,
   searchList,
+  selectedPlace,
   handleMarkerClick,
 }: Props) {
   useLoginCheck();
@@ -78,7 +81,7 @@ function Map({
     const bounds = new google.maps.LatLngBounds();
 
     setMarkers(
-      searchList.map((place: SearchPlace, index: number) => {
+      searchList.map((place: SearchPlace) => {
         const position: google.maps.LatLngLiteral = { lat: parseFloat(place.y), lng: parseFloat(place.x) };
         bounds.extend(position);
 
@@ -89,13 +92,22 @@ function Map({
         });
 
         const infoWindow = new google.maps.InfoWindow({
-          content: `<div style="text-align: left;">
-          <a href="${place.place_url}" target="_blank" style="font-size: 14px; text-decoration:none;">${
-            place.place_name
-          }</a>
-          <div style="margin: 5px 0;">${place.road_address_name || place.address_name}</div>
-          <button type="button" style="width: 60px; height: 25px; font-size: 12px;" data-index="${index}" id="btnSelect${index}">선택하기</button>
-        </div>`,
+          content: `<div id='infoWindow${place.id}'/>`,
+        });
+
+        infoWindow.addListener('domready', () => {
+          render(
+            <InfoWindow
+              place={place}
+              isSelected={place.id === selectedPlace?.id}
+              handleMarkerClick={() => {
+                if (handleMarkerClick) {
+                  handleMarkerClick(place);
+                }
+              }}
+            />,
+            document.getElementById(`infoWindow${place.id}`),
+          );
         });
 
         marker.addListener('click', () => {
@@ -111,7 +123,7 @@ function Map({
     );
 
     mapObj.current?.fitBounds(bounds);
-  }, [searchList]);
+  }, [searchList, selectedPlace]);
 
   return (
     <Box component="article" maxWidth="lg">

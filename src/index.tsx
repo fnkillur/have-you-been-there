@@ -11,6 +11,7 @@ declare global {
   interface Window {
     kakao: any;
     google: any;
+    handleClickPlaceSelect: (e: Event) => void;
   }
 }
 
