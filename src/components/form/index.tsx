@@ -1,5 +1,5 @@
-import { KeyboardEventHandler, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { KeyboardEventHandler, useEffect, useRef, useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { useFormik } from 'formik';
 import {
   Backdrop,
@@ -23,11 +23,12 @@ import { Alert, Rating } from '@material-ui/lab';
 import { Color } from '@material-ui/lab/Alert/Alert';
 import FavoriteIcon from '@material-ui/icons/Favorite';
 import { MaterialUiPickersDate } from '@material-ui/pickers/typings/date';
-import { MapRounded } from '@material-ui/icons';
+import { MapRounded, SearchRounded } from '@material-ui/icons';
 import DateFnsUtils from '@date-io/date-fns';
 import { auth, firebaseDB } from '../../firebase.config';
 import useLoginCheck from '../../hooks/login/useLoginCheck';
 import { allCategories } from '../../const/categories';
+import { useQuery } from '../../utils/RouteUtils';
 import Map from '../map';
 import './Form.scss';
 
@@ -58,25 +59,33 @@ export type FormRecord = {
   visitedDate: Date;
   score: number | null;
   comment: string;
+  x?: string;
+  y?: string;
+  url?: string;
+  address?: string;
 };
 
 export type SearchPlace = {
-  address_name: string;
-  category_group_code: string;
-  category_group_name: string;
-  category_name: string;
-  distance: string;
+  address_name?: string;
+  category_group_code?: string;
+  category_group_name?: string;
+  category_name?: string;
+  distance?: string;
   id: string;
-  phone: string;
+  phone?: string;
   place_name: string;
-  place_url: string;
-  road_address_name: string;
+  place_url?: string;
+  road_address_name?: string;
   x: string;
   y: string;
 };
 
 function Form() {
   useLoginCheck();
+
+  const history = useHistory();
+  const query = useQuery();
+  const id = query.get('id');
 
   const [message, setMessage] = useState<Message>(initMessage);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -86,16 +95,22 @@ function Form() {
   const [searchList, setSearchList] = useState<SearchPlace[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<SearchPlace | undefined>();
 
+  const [isDelete, setIsDelete] = useState<boolean>(false);
+
   const formik = useFormik<FormRecord>({
     initialValues: {
       placeId: '',
       placeName: '',
-      price: undefined,
+      price: 0,
       menus: '',
       category: '음식점',
       visitedDate: new Date(),
       score: 0,
       comment: '',
+      x: '',
+      y: '',
+      url: '',
+      address: '',
     },
     async onSubmit(values) {
       if (!auth.currentUser?.uid) {
@@ -104,10 +119,27 @@ function Form() {
 
       setIsLoading(true);
 
+      const record = {
+        placeId: selectedPlace?.id || '',
+        placeName: selectedPlace?.place_name || values.placeName,
+        price: values.price,
+        menus: values.menus,
+        category: values.category,
+        visitedDate: values.visitedDate.toISOString(),
+        score: values.score,
+        comment: values.comment,
+        x: selectedPlace?.x || '',
+        y: selectedPlace?.y || '',
+        url: selectedPlace?.place_url || '',
+        address: selectedPlace?.road_address_name || selectedPlace?.address_name || '',
+      };
       try {
-        await firebaseDB
-          .ref(`/records/${auth.currentUser.uid}`)
-          .push({ ...values, visitedDate: values.visitedDate.toISOString(), mapInfo: selectedPlace });
+        if (values.id) {
+          await firebaseDB.ref(`/records/${auth.currentUser.uid}/${values.id}`).update(record);
+        } else {
+          await firebaseDB.ref(`/records/${auth.currentUser.uid}`).push(record);
+        }
+
         setMessage({ open: true, contents: '저장이 완료됐습니다.', type: 'success' });
         formik.resetForm();
         window.scrollTo(0, 0);
@@ -119,38 +151,101 @@ function Form() {
     },
   });
 
+  // 수정할 데이터
+  useEffect(() => {
+    if (id && auth.currentUser?.uid) {
+      firebaseDB
+        .ref(`/records/${auth.currentUser.uid}/${id}`)
+        .get()
+        .then((snapshot) => {
+          const record = snapshot.val();
+          if (!record) {
+            return;
+          }
+
+          formik.setValues({
+            id,
+            ...record,
+            visitedDate: new Date(record.visitedDate as Date),
+          });
+
+          if (record.placeId) {
+            setSelectedPlace({
+              id: record.placeId,
+              place_name: record.placeName,
+              place_url: record.url,
+              x: record.x,
+              y: record.y,
+            });
+          }
+        });
+    }
+  }, [id]);
+
+  // 데이터 삭제
+  useEffect(() => {
+    if (isDelete && id && auth.currentUser?.uid) {
+      setIsLoading(true);
+      firebaseDB
+        .ref(`/records/${auth.currentUser.uid}/${id}`)
+        .remove()
+        .then(() => {
+          setMessage({ open: true, contents: '삭제가 완료됐습니다.', type: 'success' });
+
+          history.replace('/form');
+          formik.resetForm();
+          setSelectedPlace(undefined);
+          window.scrollTo(0, 0);
+
+          setIsLoading(false);
+          setIsDelete(false);
+        });
+    }
+  }, [isDelete]);
+
   const handleDisableEnter: KeyboardEventHandler = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
     }
   };
 
+  const searchMap = async () => {
+    if (!isOpenMap || !formik.values.placeName) {
+      return;
+    }
+
+    await kakaoPlaces.current.keywordSearch(
+      formik.values.placeName,
+      (data: SearchPlace[], status: string, pagination: any) => {
+        if (status !== window.kakao.maps.services.Status.OK) {
+          return;
+        }
+
+        setSearchList(data);
+      },
+    );
+  };
+
   const handleMapSearch: KeyboardEventHandler<HTMLDivElement> = async (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-
-      if (!isOpenMap) {
-        return;
-      }
-
-      await kakaoPlaces.current.keywordSearch(
-        formik.values.placeName,
-        (data: SearchPlace[], status: string, pagination: any) => {
-          if (status !== window.kakao.maps.services.Status.OK) {
-            return;
-          }
-
-          setSearchList(data);
-        },
-      );
+      searchMap();
     }
   };
 
   const handleMapDelete = (e: any) => {
-    if (e.keyCode === 8 && selectedPlace) {
+    if (selectedPlace) {
       // eslint-disable-next-line no-restricted-globals
       if (confirm('선택한 장소를 제거하시겠습니까?')) {
         setSelectedPlace(undefined);
+        formik.setValues({
+          ...formik.values,
+          placeId: '',
+          x: '',
+          y: '',
+          url: '',
+          address: '',
+        });
       } else {
         e.preventDefault();
       }
@@ -191,6 +286,15 @@ function Form() {
               onKeyDown={handleMapDelete}
               required
             />
+            {isOpenMap && (
+              <IconButton
+                color="primary"
+                style={{ position: 'absolute', right: '40px', top: '7px', padding: '10px' }}
+                onClick={searchMap}
+              >
+                <SearchRounded />
+              </IconButton>
+            )}
             <IconButton
               color={isOpenMap ? 'primary' : 'default'}
               style={{ position: 'absolute', right: '1px', top: '7px', padding: '10px' }}
@@ -317,8 +421,25 @@ function Form() {
           >
             저장하기
           </Button>
+          {!!id && (
+            <Button
+              variant="contained"
+              color="secondary"
+              type="button"
+              style={{ marginTop: '20px', width: '100%', height: '50px', fontSize: '16px', fontWeight: 'bold' }}
+              onClick={() => setIsDelete(true)}
+              disabled={isDelete}
+            >
+              삭제하기
+            </Button>
+          )}
         </form>
-        <Snackbar open={message.open} autoHideDuration={3000} onClose={() => setMessage(initMessage)}>
+        <Snackbar
+          open={message.open}
+          autoHideDuration={3000}
+          onClose={() => setMessage(initMessage)}
+          style={{ marginBottom: '70px' }}
+        >
           <Alert onClose={() => setMessage(initMessage)} severity={message.type}>
             {message.contents}
           </Alert>
