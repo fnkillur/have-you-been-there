@@ -21,8 +21,8 @@ function SearchBar() {
     <Paper component="form" className="root">
       <InputBase
         className="input"
-        placeholder="장소 검색"
-        inputProps={{ 'aria-label': '장소 검색' }}
+        placeholder="검색"
+        inputProps={{ 'aria-label': '검색' }}
         name="search"
         value={formik.values.search}
         onChange={formik.handleChange}

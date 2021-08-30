@@ -1,11 +1,13 @@
 import { useHistory } from 'react-router-dom';
 
-function useLoginCheck() {
+function useLoginCheck(): string {
   const history = useHistory();
 
-  if (!sessionStorage.getItem('HYBT_email')) {
+  if (!localStorage.getItem('HYBT_uid')) {
     history.replace('/');
   }
+
+  return localStorage.getItem('HYBT_uid') || '';
 }
 
 export default useLoginCheck;

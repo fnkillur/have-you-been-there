@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { render } from 'react-dom';
-import { Box } from '@material-ui/core';
+import { Box, Button } from '@material-ui/core';
 import { mapApiKey } from '../../google.api.config';
 import useLoginCheck from '../../hooks/login/useLoginCheck';
-import SearchBar from '../_common/SearchBar';
-import { SearchPlace } from '../form';
+import SearchBar from './SearchBar';
 import InfoWindow from './InfoWindow';
-import './Map.scss';
+import { SearchPlace } from '../form';
+import { ListRecord } from '../list';
 
 type Position = {
   lat: number;
@@ -20,6 +20,8 @@ type Props = {
   searchList?: SearchPlace[];
   selectedPlace?: SearchPlace;
   handleMarkerClick?: (place: SearchPlace) => void;
+  records?: ListRecord[];
+  setCurrentPosition?: (next: google.maps.LatLngBounds | undefined) => void;
 };
 
 function Map({
@@ -29,10 +31,13 @@ function Map({
   searchList,
   selectedPlace,
   handleMarkerClick,
+  records,
+  setCurrentPosition,
 }: Props) {
   useLoginCheck();
 
   const mapObj = useRef<google.maps.Map | undefined>(undefined);
+  const [isMove, setIsMove] = useState<boolean>(true);
   const [position, setPosition] = useState<Position>({ lat: 37.31252759943007, lng: 127.08845821697777 });
   const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
 
@@ -66,11 +71,17 @@ function Map({
           zoom: 16,
           disableDefaultUI: true,
         });
+
+        mapObj.current?.addListener('center_changed', () => {
+          if (setIsMove) {
+            setIsMove(true);
+          }
+        });
       });
     }
   }, [mapObj.current]);
 
-  // 마커
+  // 검색 마커
   useEffect(() => {
     markers.map((marker: google.maps.Marker) => marker.setMap(null));
 
@@ -125,8 +136,78 @@ function Map({
     mapObj.current?.fitBounds(bounds);
   }, [searchList, selectedPlace]);
 
+  // 기록 마커
+  useEffect(() => {
+    markers.map((marker: google.maps.Marker) => marker.setMap(null));
+
+    if (!records?.length) {
+      return;
+    }
+
+    const bounds = new google.maps.LatLngBounds();
+
+    setMarkers(
+      records.map((record: ListRecord) => {
+        const position: google.maps.LatLngLiteral = {
+          lat: parseFloat(record?.y || '0'),
+          lng: parseFloat(record?.x || '0'),
+        };
+        bounds.extend(position);
+
+        const marker = new google.maps.Marker({
+          position,
+          title: record.placeName,
+          map: mapObj.current,
+        });
+
+        const infoWindow = new google.maps.InfoWindow({
+          content: `<div>
+            <div><a href="${record?.url}" target="_blank">${record.placeName}</a></div>
+            <div>${record?.score ? `${record?.score}점` : '미평가'}</div>
+          </div>`,
+        });
+
+        marker.addListener('click', () => {
+          infoWindow.open({
+            anchor: marker,
+            map: mapObj.current,
+            shouldFocus: false,
+          });
+        });
+
+        return marker;
+      }),
+    );
+
+    if (setIsMove) {
+      setIsMove(false);
+    }
+
+    mapObj.current?.fitBounds(bounds);
+  }, [records]);
+
   return (
     <Box component="article" maxWidth="lg">
+      {isMove && setCurrentPosition && (
+        <Button
+          variant="contained"
+          style={{
+            zIndex: 2,
+            position: 'absolute',
+            top: '100px',
+            left: `${(window.innerWidth - 100) / 2}px`,
+            borderRadius: '20px',
+            width: '100px',
+            backgroundColor: '#FFF',
+          }}
+          onClick={() => {
+            setIsMove(false);
+            setCurrentPosition(mapObj.current?.getBounds());
+          }}
+        >
+          여기 검색
+        </Button>
+      )}
       {useSearchBar && <SearchBar />}
       <div id="map" style={{ width, height }} />
     </Box>

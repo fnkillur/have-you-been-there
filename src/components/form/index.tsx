@@ -25,11 +25,12 @@ import FavoriteIcon from '@material-ui/icons/Favorite';
 import { MaterialUiPickersDate } from '@material-ui/pickers/typings/date';
 import { MapRounded, SearchRounded } from '@material-ui/icons';
 import DateFnsUtils from '@date-io/date-fns';
-import { auth, firebaseDB } from '../../firebase.config';
+import { firebaseDB } from '../../firebase.config';
 import useLoginCheck from '../../hooks/login/useLoginCheck';
-import { allCategories } from '../../const/categories';
+import { allCategories, mappingCategory } from '../../const/categories';
 import { useQuery } from '../../utils/RouteUtils';
-import Map from '../map';
+import { makeKeywords } from '../../utils/StringUtils';
+import Map from '../_common/Map';
 import './Form.scss';
 
 const StyledRating = withStyles({
@@ -50,7 +51,6 @@ type Message = {
 const initMessage: Message = { open: false, contents: undefined, type: 'success' };
 
 export type FormRecord = {
-  id?: any;
   placeId: string;
   placeName: string;
   price?: number;
@@ -81,11 +81,11 @@ export type SearchPlace = {
 };
 
 function Form() {
-  useLoginCheck();
+  const userId = useLoginCheck();
 
   const history = useHistory();
   const query = useQuery();
-  const id = query.get('id');
+  const recordId = query.get('id');
 
   const [message, setMessage] = useState<Message>(initMessage);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -113,31 +113,35 @@ function Form() {
       address: '',
     },
     async onSubmit(values) {
-      if (!auth.currentUser?.uid) {
+      if (!userId) {
         return;
       }
 
       setIsLoading(true);
 
-      const record = {
-        placeId: selectedPlace?.id || '',
-        placeName: selectedPlace?.place_name || values.placeName,
-        price: values.price,
-        menus: values.menus,
-        category: values.category,
-        visitedDate: values.visitedDate.toISOString(),
-        score: values.score,
-        comment: values.comment,
-        x: selectedPlace?.x || '',
-        y: selectedPlace?.y || '',
-        url: selectedPlace?.place_url || '',
-        address: selectedPlace?.road_address_name || selectedPlace?.address_name || '',
-      };
       try {
-        if (values.id) {
-          await firebaseDB.ref(`/records/${auth.currentUser.uid}/${values.id}`).update(record);
+        const collection = firebaseDB.collection('records');
+        const record = {
+          ...values,
+          visitedDate: values.visitedDate.getTime(),
+          keywords: values.placeName
+            .split('')
+            .reduce(makeKeywords, [])
+            .concat(
+              values.menus
+                .split(',')
+                .map((menu: string) => menu.split('').reduce(makeKeywords, []))
+                .flat(),
+            ),
+        };
+
+        if (recordId) {
+          await collection.doc(`${recordId}`).update({ ...record });
         } else {
-          await firebaseDB.ref(`/records/${auth.currentUser.uid}`).push(record);
+          await collection.add({
+            userId,
+            ...record,
+          });
         }
 
         setMessage({ open: true, contents: '저장이 완료됐습니다.', type: 'success' });
@@ -153,42 +157,52 @@ function Form() {
 
   // 수정할 데이터
   useEffect(() => {
-    if (id && auth.currentUser?.uid) {
+    if (recordId) {
       firebaseDB
-        .ref(`/records/${auth.currentUser.uid}/${id}`)
+        .collection('records')
+        .doc(recordId)
         .get()
         .then((snapshot) => {
-          const record = snapshot.val();
+          const record = snapshot.data();
           if (!record) {
             return;
           }
 
+          if (record.userId !== userId) {
+            alert('자신이 등록한 기록이 아닙니다.');
+            history.replace('/form');
+            return;
+          }
+
           formik.setValues({
-            id,
             ...record,
-            visitedDate: new Date(record.visitedDate as Date),
-          });
+            visitedDate: new Date(record.visitedDate),
+          } as FormRecord);
 
           if (record.placeId) {
             setSelectedPlace({
               id: record.placeId,
               place_name: record.placeName,
               place_url: record.url,
+              address_name: record.address,
+              road_address_name: record.address,
+              category_group_name: record.category,
               x: record.x,
               y: record.y,
             });
           }
         });
     }
-  }, [id]);
+  }, [recordId]);
 
   // 데이터 삭제
   useEffect(() => {
-    if (isDelete && id && auth.currentUser?.uid) {
+    if (isDelete && recordId && userId) {
       setIsLoading(true);
       firebaseDB
-        .ref(`/records/${auth.currentUser.uid}/${id}`)
-        .remove()
+        .collection('records')
+        .doc(recordId)
+        .delete()
         .then(() => {
           setMessage({ open: true, contents: '삭제가 완료됐습니다.', type: 'success' });
 
@@ -203,6 +217,31 @@ function Form() {
     }
   }, [isDelete]);
 
+  // 지도 데이터 선택
+  useEffect(() => {
+    if (selectedPlace) {
+      formik.setValues({
+        ...formik.values,
+        placeId: selectedPlace.id,
+        placeName: selectedPlace.place_name,
+        category: mappingCategory(selectedPlace.category_group_name || ''),
+        x: selectedPlace.x,
+        y: selectedPlace.y,
+        url: selectedPlace.place_url,
+        address: selectedPlace.road_address_name || selectedPlace.address_name,
+      });
+    } else {
+      formik.setValues({
+        ...formik.values,
+        placeId: '',
+        x: '',
+        y: '',
+        url: '',
+        address: '',
+      });
+    }
+  }, [selectedPlace]);
+
   const handleDisableEnter: KeyboardEventHandler = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -214,16 +253,13 @@ function Form() {
       return;
     }
 
-    await kakaoPlaces.current.keywordSearch(
-      formik.values.placeName,
-      (data: SearchPlace[], status: string, pagination: any) => {
-        if (status !== window.kakao.maps.services.Status.OK) {
-          return;
-        }
+    await kakaoPlaces.current.keywordSearch(formik.values.placeName, (data: SearchPlace[], status: string) => {
+      if (status !== window.kakao.maps.services.Status.OK) {
+        return;
+      }
 
-        setSearchList(data);
-      },
-    );
+      setSearchList(data);
+    });
   };
 
   const handleMapSearch: KeyboardEventHandler<HTMLDivElement> = async (e) => {
@@ -233,19 +269,11 @@ function Form() {
     }
   };
 
-  const handleMapDelete = (e: any) => {
+  const handleMapDelete: KeyboardEventHandler<HTMLInputElement> = (e) => {
     if (selectedPlace) {
-      // eslint-disable-next-line no-restricted-globals
+      // eslint-disable-next-line no-restricted-globals,no-alert
       if (confirm('선택한 장소를 제거하시겠습니까?')) {
         setSelectedPlace(undefined);
-        formik.setValues({
-          ...formik.values,
-          placeId: '',
-          x: '',
-          y: '',
-          url: '',
-          address: '',
-        });
       } else {
         e.preventDefault();
       }
@@ -421,7 +449,7 @@ function Form() {
           >
             저장하기
           </Button>
-          {!!id && (
+          {!!recordId && (
             <Button
               variant="contained"
               color="secondary"
